@@ -1,0 +1,32 @@
+name: Issue Labeler
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  label-issue:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check issue title
+      id: check-title
+      run: |
+        TITLE=$(echo "${{ github.event.issue.title }}" | tr '[:upper:]' '[:lower:]')
+        if echo "$TITLE" | grep -q "error"; then
+          echo "::set-output name=label::bug"
+        elif echo "$TITLE" | grep -q "add"; then
+          echo "::set-output name=label::feature"
+        fi
+      outputs:
+        label: ${{ steps.check-title.outputs.label }}
+    - name: Add label
+      if: steps.check-title.outputs.label != ''
+      uses: actions/github-script@v6
+      with:
+        script: |
+          github.issues.addLabels({
+            issue_number: context.payload.issue.number,
+            labels: [${{ steps.check-title.outputs.label }}],
+            owner: context.repo.owner,
+            repo: context.repo.repo
+          })
