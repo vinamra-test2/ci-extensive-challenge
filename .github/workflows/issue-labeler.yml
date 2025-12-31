@@ -1,0 +1,49 @@
+name: Issue Auto Labeler
+
+on:
+  issues:
+    types: [opened, edited]
+
+jobs:
+  label-issue:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Auto-label issues
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issue = context.payload.issue;
+            const issueTitle = issue.title.toLowerCase();
+            const issueBody = issue.body ? issue.body.toLowerCase() : '';
+            
+            // Check for keywords and determine labels
+            const labelsToAdd = [];
+            
+            if (issueTitle.includes('error') || issueBody.includes('error')) {
+              labelsToAdd.push('bug');
+            }
+            
+            if (issueTitle.includes('add') || issueBody.includes('add') || 
+                issueTitle.includes('feature') || issueBody.includes('feature')) {
+              labelsToAdd.push('feature');
+            }
+            
+            // Add labels if any were found
+            if (labelsToAdd.length > 0) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                labels: labelsToAdd
+              });
+              
+              console.log(`Added labels: ${labelsToAdd.join(', ')} to issue #${issue.number}`);
+            } else {
+              console.log(`No matching keywords found for issue #${issue.number}`);
+            }
